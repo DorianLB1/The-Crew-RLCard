@@ -1,4 +1,5 @@
 from utils import init_crew_deck, find_commander
+from player import Player
 import numpy as np
 
 
@@ -46,39 +47,5 @@ class CrewDealer:
                 break
 
 
-class Player:
-    def __init__(self):
-        self.hand = []
-        self.task = None
-
-    def show_hand(self):
-        return [card.get_str() for card in self.hand]
-
-    def show_task(self):
-        if self.task:
-            return self.task.get_str()
-        return "No task"
 
 
-if __name__ == '__main__':
-    np_random = np.random.RandomState()
-
-    # Initialize dealer
-    dealer = CrewDealer(np_random)
-
-    # Create players
-    players = [Player() for _ in range(4)]
-
-    for player in players:
-        dealer.deal_cards(player, 10)
-
-    task_cards = dealer.deal_task_cards(np_random)
-    dealer.select_tasks(players, task_cards, np_random)
-
-    # Show each player's hand
-    for i, player in enumerate(players):
-        print(f"Player {i + 1}'s hand: {player.show_hand()}")
-        print(f"Player {i + 1}'s task: {player.show_task()}")
-
-    starting_player_index = find_commander(players)
-    print(f"Player {starting_player_index + 1} is the Commander")
