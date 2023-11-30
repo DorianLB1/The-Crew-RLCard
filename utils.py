@@ -38,18 +38,19 @@ def find_commander(players):
     raise ValueError("Rocket 4 card not found. Check the deck and dealing.")
 
 
-def check_task_completion(player, winning_card):
+def check_task_completion(player, task_card):
     ''' Check if the player has completed their task.
 
     Args:
         player (Player): The player object
-        winning_card (CrewCard): The card that won the trick
+        task_card (CrewCard): The card object representing the player's task
 
     Returns:
         bool: True if the task is completed, False otherwise
     '''
-    if player.task.get_str() == winning_card.get_str():
-        return True
+    for trick in player.won_tricks:
+        if task_card in trick:
+            return True
     return False
 
 
