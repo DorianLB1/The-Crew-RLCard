@@ -2,7 +2,8 @@ class Player:
     def __init__(self):
         self.hand = []
         self.task = None
-        self.communication_token = True  # Indicates if the token is available
+        self.communication_token = True
+        self.won_tricks = []
 
     def show_hand(self):
         return [card.get_str() for card in self.hand]
