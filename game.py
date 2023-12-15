@@ -1,135 +1,166 @@
-import numpy as np
-
-from card import CrewCard
-from dealer import CrewDealer
 from player import Player
-from utils import find_commander, check_task_completion
-from player import use_communication_token
+import random
+
+from utils import init_crew_deck
 
 
-def play_a_trick(players, current_player_index):
-    first_suit = None
-    winning_card = None
-    winning_player_index = current_player_index
-    rocket_played = False
-    trick_cards = []
+def encode_task(task):
+    return task.get_str() if task else None
 
-    for i in range(len(players)):
-        player_index = (current_player_index + i) % len(players)
-        player = players[player_index]
 
-        # Player plays the first card in their hand
-        card = player.hand.pop(0)
-        trick_cards.append(card)
-        print(f"Player {player_index + 1} plays {card.get_str()}")
+def encode_trick(trick):
+    return [card.get_str() for card in trick]
 
-        if card.is_rocket:  # Check if the card is a rocket
-            if not rocket_played or int(card.number) > int(winning_card.number):
+
+def encode_cards(cards):
+    return [card.get_str() for card in cards]
+
+
+def determine_trick_winner(trick):
+    leading_suit = trick[0].suit
+    winning_card = trick[0]
+    winner_index = 0
+
+    for i, card in enumerate(trick[1:], 1):
+        if card.is_rocket:
+            if not winning_card.is_rocket or int(card.number) > int(winning_card.number):
                 winning_card = card
-                winning_player_index = player_index
-                rocket_played = True
-        elif not rocket_played:
-            if first_suit is None:
-                first_suit = card.suit
-                winning_card = card
-                winning_player_index = player_index
-            elif card.suit == first_suit and int(card.number) > int(winning_card.number):
-                winning_card = card
-                winning_player_index = player_index
+                winner_index = i
+        elif not winning_card.is_rocket and card.suit == leading_suit and int(card.number) > int(
+                winning_card.number):
+            winning_card = card
+            winner_index = i
 
-    # Add the entire trick to the winner's won tricks
-    players[winning_player_index].won_tricks.append(trick_cards)
-
-    return winning_card, winning_player_index, trick_cards
+    return winner_index
 
 
-def all_tasks_completed(players):
-    for player in players:
-        if player.task:  # Consider only players with tasks
-            # Task is completed if the player's task card matches a winning card
-            if not check_task_completion(player, player.task):
-                print(f"Player {players.index(player) + 1} task not completed: {player.task.get_str()}")  # Debug
-                return False  # If any task is not completed, return False
-    return True  # Return True if all tasks are completed
+def check_task_completion(player, task_card):
+    ''' Check if the player has completed their task.
+    Args:
+        player (Player): The player object
+        task_card (CrewCard): The card object representing the player's task
+    Returns:
+        bool: True if the task is completed, False otherwise
+    '''
+    for trick in player.won_tricks:
+        if task_card in trick:
+            return True
+    return False
 
 
-def is_game_over(players):
-    all_cards_played = all(len(player.hand) == 0 for player in players)
-    all_tasks_done = all_tasks_completed(players)
+def simulate_game():
+    num_players = 4
+    game = TheCrewGame(num_players)
 
-    print(f"Debug: All cards played: {all_cards_played}, All tasks done: {all_tasks_done}")  # Debugging line
+    # Print initial state
+    print("Initial State:")
+    for i in range(num_players):
+        print(f"Player {i} hand: {game.players[i].hand}")
+        print(f"Player {i} task: {game.players[i].task}")
 
-    return all_cards_played or all_tasks_done
+    while not game.is_round_over():
+        current_player = game.game_pointer
+        available_actions = game.get_available_actions(current_player)
+
+        # Simulate a random action for the current player
+        action = random.choice(available_actions)
+        print(f"\nPlayer {current_player} plays action {action}")
+
+        # Perform the action and get the new state
+        new_state, next_player = game.step(action)
+        print(f"New state: {new_state}")
+
+    print("Round Over")
 
 
-def play_game(players, commander_index):
-    current_player_index = commander_index
-    trick_number = 1
+class TheCrewGame:
+    def __init__(self, num_players):
+        self.players = [Player() for _ in range(num_players)]
+        self.deck, self.task_cards = init_crew_deck()
+        self.shuffle_deck()
+        self.deal_cards()
+        self.assign_tasks()  # Placeholder for task assignment logic
+        self.current_trick = []
+        self.game_pointer = self.find_commander()
 
-    while True:  # Continue until the game is over
-        print(f"\n--- Trick {trick_number} ---")
-        print(f"Player {current_player_index + 1} starts the trick.")
+    def shuffle_deck(self):
+        random.shuffle(self.deck)
 
-        # Players play a trick
-        winning_card, winner_index, trick_cards = play_a_trick(players, current_player_index)
-        print(f"Player {winner_index + 1} wins the trick with {winning_card.get_str()}")
+    def deal_cards(self):
+        for player in self.players:
+            for _ in range(10):  # Assuming each player gets 10 cards
+                player.hand.append(self.deck.pop())
 
-        # Add the winning card to the winner's list of won tricks
-        players[winner_index].won_tricks.append(trick_cards)
+    def assign_tasks(self):
+        random.shuffle(self.task_cards)
+        self.players[0].task = self.task_cards.pop()
+        self.players[1].task = self.task_cards.pop()
 
-        # Check task completion if the player has a task
-        if players[winner_index].task:
-            task_card = players[winner_index].task
-            task_completed = check_task_completion(players[winner_index], task_card)
-            if task_completed:
-                print(f"Player {winner_index + 1} completes their task with {winning_card.get_str()}!")
-                players[winner_index].task = None  # Mark the task as completed
-            else:
-                print(f"Player {winner_index + 1} did not complete a task.")
+    def get_state(self, player_id):
+        state = {}
+        state['actions'] = self.get_available_actions(player_id)
+        state['player_hand'] = encode_cards(self.players[player_id].hand)
+        state['current_trick'] = encode_trick(self.current_trick)
+        state['player_task'] = encode_task(self.players[player_id].task)
+        state['public_info'] = self.get_public_info()
+        for i in range(len(self.players)):
+            if i != player_id:
+                state['player' + str(i) + '_num_cards'] = len(self.players[i].hand)
+        return state
+
+    def get_available_actions(self, player_id):
+        player_hand = self.players[player_id].hand
+        return list(range(len(player_hand)))
+
+    def step(self, action):
+        if action not in self.get_available_actions(self.game_pointer):
+            raise ValueError("Invalid action.")
+        played_card = self.players[self.game_pointer].hand.pop(action)
+        self.current_trick.append(played_card)
+        if len(self.current_trick) == len(self.players):
+            trick_winner = determine_trick_winner(self.current_trick)
+            self.players[trick_winner].won_tricks.append(self.current_trick)
+            self.check_tasks_completion(trick_winner)
+            self.current_trick = []
+            next_player = trick_winner
         else:
-            print(f"Player {winner_index + 1} wins the trick but has no task.")
+            next_player = (self.game_pointer + 1) % len(self.players)
+        self.game_pointer = next_player
+        if self.is_round_over():
+            self.update_round_end()
+        return self.get_state(self.game_pointer), self.game_pointer
 
-        # Increment trick number
-        trick_number += 1
+    def get_public_info(self):
+        public_info = {}
+        for i, player in enumerate(self.players):
+            public_info['player{}_num_cards'.format(i)] = len(player.hand)
+        public_info['current_trick'] = [card.get_str() for card in self.current_trick]
+        return public_info
 
-        # Check if the game should end
-        if is_game_over(players):
-            break
+    def check_tasks_completion(self, player_id):
+        player = self.players[player_id]
+        if player.task:
+            task_completed = check_task_completion(player, player.task)
+            if task_completed:
+                player.task = None
 
-    # Determine if the mission is successful
-    if all_tasks_completed(players):
-        print("Mission successful!")
-    else:
-        print("Mission failed.")
+    def find_commander(self):
+        for i, player in enumerate(self.players):
+            for card in player.hand:
+                if card.get_str() == 'rocket-4':
+                    return i
+        raise ValueError("Starting player not found. Check the deck and dealing.")
+
+    def is_round_over(self):
+        all_cards_played = all(len(player.hand) == 0 for player in self.players)
+        all_tasks_completed = all(
+            player.task is None or check_task_completion(player, player.task) for player in self.players if
+            player.task is not None)
+        return all_cards_played or all_tasks_completed
+
+    def update_round_end(self):
+        pass
 
 
-if __name__ == '__main__':
-    # Initialize random generator
-    np_random = np.random.RandomState()
-
-    # Initialize dealer
-    dealer = CrewDealer(np_random)
-
-    # Create players
-    players = [Player() for _ in range(4)]
-
-    # Deal cards to players
-    for player in players:
-        dealer.deal_cards(player, 10)
-
-    # Shuffle task cards pool and select tasks
-    np_random.shuffle(dealer.task_cards_pool)
-    task_cards = dealer.deal_task_cards(np_random)
-    dealer.select_tasks(players, task_cards, np_random)
-
-    # Show each player's hand and their tasks
-    for i, player in enumerate(players):
-        print(f"Player {i + 1}'s hand: {player.show_hand()}")
-        print(f"Player {i + 1}'s task: {player.show_task()}")
-
-    # Find the starting player (Commander)
-    commander_index = find_commander(players)
-    print(f"Player {commander_index + 1} is the Commander")
-
-    # Play the game
-    play_game(players, commander_index)
+if __name__ == "__main__":
+    simulate_game()
