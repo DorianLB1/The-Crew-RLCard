@@ -22,37 +22,6 @@ def init_crew_deck():
     return deck, task_cards
 
 
-def find_commander(players):
-    ''' Finds the starting player (the one who has the "Rocket 4" card)
-
-    Args:
-        players (list): The list of Player objects
-
-    Returns:
-        int: The index of the starting player
-    '''
-    for i, player in enumerate(players):
-        for card in player.hand:
-            if card.get_str() == 'rocket-4':
-                return i
-    raise ValueError("Rocket 4 card not found. Check the deck and dealing.")
-
-
-def check_task_completion(player, task_card):
-    ''' Check if the player has completed their task.
-
-    Args:
-        player (Player): The player object
-        task_card (CrewCard): The card object representing the player's task
-
-    Returns:
-        bool: True if the task is completed, False otherwise
-    '''
-    for trick in player.won_tricks:
-        if task_card in trick:
-            return True
-    return False
-
 
 if __name__ == '__main__':
 

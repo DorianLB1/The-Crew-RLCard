@@ -20,7 +20,6 @@ class CrewCard:
 
     def get_str(self):
         ''' Get the string representation of the card
-
         Return:
             (str): The string of the card's suit and number or rocket
         '''
