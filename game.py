@@ -52,34 +52,52 @@ def simulate_game():
     num_players = 4
     game = TheCrewGame(num_players)
 
-    # Print initial state
     print("Initial State:")
     for i in range(num_players):
-        print(f"Player {i} hand: {game.players[i].hand}")
-        print(f"Player {i} task: {game.players[i].task}")
+        player_hand = ', '.join([card.get_str() for card in game.players[i].hand])
+        task = game.players[i].task.get_str() if game.players[i].task else "No task"
+        print(f"Player {i} hand: {player_hand}")
+        print(f"Player {i} task: {task}")
+
+    print("\n--- Game Start ---\n")
+    round_number = 1
 
     while not game.is_round_over():
+        if len(game.current_trick) == 0:
+            print(f"\n--- Round {round_number} ---\n")
+            round_number += 1
+
         current_player = game.game_pointer
         available_actions = game.get_available_actions(current_player)
-
-        # Simulate a random action for the current player
         action = random.choice(available_actions)
-        print(f"\nPlayer {current_player} plays action {action}")
+        played_card = game.players[current_player].hand[action].get_str()
+        print(f"Player {current_player} plays {played_card}")
 
-        # Perform the action and get the new state
         new_state, next_player = game.step(action)
-        print(f"New state: {new_state}")
 
-    print("Round Over")
+        # Display current trick after each player's action, but before it's cleared
+        current_trick = ', '.join(new_state['public_info']['current_trick'])
+        print(f"Current trick: {current_trick}\n")
+
+        if game.is_round_over():
+            print("Round Over")
+            break
+
+    print("\nTask Completion Status:")
+    for i in range(num_players):
+        task_status = "Completed" if game.players[i].task is None else "Not Completed"
+        print(f"Player {i} task: {task_status}")
 
 
 class TheCrewGame:
     def __init__(self, num_players):
+        self.current_trick_pending_clear = False
         self.players = [Player() for _ in range(num_players)]
         self.deck, self.task_cards = init_crew_deck()
         self.shuffle_deck()
         self.deal_cards()
-        self.assign_tasks()  # Placeholder for task assignment logic
+        self.commander_index = self.find_commander()
+        self.assign_tasks()
         self.current_trick = []
         self.game_pointer = self.find_commander()
 
@@ -115,19 +133,26 @@ class TheCrewGame:
     def step(self, action):
         if action not in self.get_available_actions(self.game_pointer):
             raise ValueError("Invalid action.")
+
         played_card = self.players[self.game_pointer].hand.pop(action)
         self.current_trick.append(played_card)
+
+        next_player = (self.game_pointer + 1) % len(self.players)
+
         if len(self.current_trick) == len(self.players):
             trick_winner = determine_trick_winner(self.current_trick)
-            self.players[trick_winner].won_tricks.append(self.current_trick)
+            self.players[trick_winner].won_tricks.append(list(self.current_trick))
+
             self.check_tasks_completion(trick_winner)
-            self.current_trick = []
+
             next_player = trick_winner
-        else:
-            next_player = (self.game_pointer + 1) % len(self.players)
+            self.current_trick.clear()
+
+            if self.is_round_over():
+                self.update_round_end()
+
         self.game_pointer = next_player
-        if self.is_round_over():
-            self.update_round_end()
+
         return self.get_state(self.game_pointer), self.game_pointer
 
     def get_public_info(self):
@@ -149,7 +174,7 @@ class TheCrewGame:
             for card in player.hand:
                 if card.get_str() == 'rocket-4':
                     return i
-        raise ValueError("Starting player not found. Check the deck and dealing.")
+        return None
 
     def is_round_over(self):
         all_cards_played = all(len(player.hand) == 0 for player in self.players)
