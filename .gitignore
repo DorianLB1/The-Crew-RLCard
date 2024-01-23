@@ -1,0 +1,5 @@
+# Ignore iml files
+*.iml
+
+# Ignore Python bytecode
+__pycache__/
