@@ -1,6 +1,6 @@
-from utils import init_crew_deck, find_commander
-from player import Player
+from thecrewgame.player import Player
 import numpy as np
+from thecrewgame.utils import init_crew_deck
 
 
 class CrewDealer:
