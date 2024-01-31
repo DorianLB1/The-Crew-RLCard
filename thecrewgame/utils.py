@@ -1,4 +1,4 @@
-from card import CrewCard
+from thecrewgame.card import CrewCard
 
 
 def init_crew_deck():

@@ -1,7 +1,7 @@
-from player import Player
+from thecrewgame.player import Player
 import random
 
-from utils import init_crew_deck
+from thecrewgame.utils import init_crew_deck
 
 
 def encode_task(task):

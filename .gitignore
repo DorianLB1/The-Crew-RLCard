@@ -1,5 +1,12 @@
-# Ignore iml files
-*.iml
-
-# Ignore Python bytecode
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+*.venv
+env/
+
+# IntelliJ / PyCharm files
+*.iml
+.idea/

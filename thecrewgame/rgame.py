@@ -1,10 +1,8 @@
 import numpy as np
 
-from card import CrewCard
-from dealer import CrewDealer
-from player import Player
+from thecrewgame.dealer import CrewDealer
+from thecrewgame.player import Player
 from utils import find_commander, check_task_completion
-from player import use_communication_token
 
 
 def play_a_trick(players, current_player_index):

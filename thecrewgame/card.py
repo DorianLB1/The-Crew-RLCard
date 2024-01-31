@@ -13,6 +13,13 @@ class CrewCard:
             number (str): The number of the card, None for Rocket cards
             is_rocket (bool): Indicator if the card is a Rocket card
         '''
+
+        # had to add these lines for the tests to be successful
+        if not is_rocket:
+            if suit not in CrewCard.info['suits']:
+                raise ValueError(f"Invalid suit: {suit}")
+            if number not in CrewCard.info['numbers']:
+                raise ValueError(f"Invalid number: {number}")
         self.suit = suit
         self.number = number
         self.is_rocket = is_rocket
